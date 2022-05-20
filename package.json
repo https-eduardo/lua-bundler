@@ -1,0 +1,8 @@
+{
+  "name": "lua-bundler",
+  "version": "1.0.0",
+  "description": "Lua file bundler made in Node.js",
+  "main": "src/index.js",
+  "type": "module",
+  "license": "MIT"
+}
