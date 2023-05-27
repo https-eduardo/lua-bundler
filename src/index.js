@@ -6,28 +6,34 @@ import config from '../config.js';
 function mapFiles(filesPath) {
     const basePath = filesPath && filesPath !== '' ? filesPath : cwd();
     const directory = path.normalize(basePath);
-    const files = fs.readdirSync(directory);
+    const fileNames = fs.readdirSync(directory);
+
     const mappedFiles = {};
-    for (const file of files) {
-        if (file.match('^.*.lua')) {
-            const buffer = fs.readFileSync(path.join(directory, file));
-            mappedFiles[file] = buffer.toString('utf-8');
+
+    for (const fileName of fileNames) {
+        if (fileName.match('^.*.lua')) {
+            const buffer = fs.readFileSync(path.join(directory, fileName));
+            mappedFiles[fileName] = buffer.toString('utf-8');
         }
     }
+
     return mappedFiles;
 }
 
 function ensureDirectoryExists(filePath) {
-    var dirname = path.dirname(filePath);
-    if (fs.existsSync(dirname)) {
+    const dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) 
         return true;
-    }
-    ensureDirectoryExists(dirname);
+
     fs.mkdirSync(dirname);
 }
 
-function filterByPriority(priorities, skipList, files) {
+function filterByPriority(priorities, originalFiles) {
+    // Clone files into a new object
+    const files = { ...originalFiles };
+
     const filteredFiles = {};
+
     for (const priority of priorities) {
         const content = files[priority];
         if (content) {
@@ -36,14 +42,24 @@ function filterByPriority(priorities, skipList, files) {
         }
     }
     Object.assign(filteredFiles, { ...files });
-    skipList.forEach((filename) => {
-        delete filteredFiles[filename];
-    });
+
     return filteredFiles;
 }
 
-function bundle(savePath, files) {
-    savePath = savePath && savePath !== '' ? savePath : cwd();
+function filterBySkipList(skipList, files) {
+    // Clone files into a new object
+    const filteredFiles = {...files};
+
+    // Remove files that will be skipped from the array
+    for (const skipFile of skipList) {
+        if (filteredFiles[skipFile])
+            delete filteredFiles[skipFile];
+    }
+    return filteredFiles;
+}
+
+function bundle(path, files) {
+    const savePath = path && path !== '' ? path : cwd();
     let bundledContent = "-- Bundled with https://github.com/https-eduardo/lua-bundler";
     for (const file in files) {
         const content = files[file];
@@ -54,6 +70,11 @@ function bundle(savePath, files) {
     console.log("✔ Files bundled sucessfully. Thanks for using. <3");
 }
 
-const mappedFiles = mapFiles(config.path);
-const filteredFiles = filterByPriority(config.priorities, config.skip, mappedFiles);
-bundle(config.save.path, filteredFiles);
+// Map files into objects
+let files = mapFiles(config.path);
+
+// Filter files by priority and skip list
+files = filterBySkipList(config.skip, files);
+files = filterByPriority(config.priorities, files);
+
+bundle(config.save.path, files);
